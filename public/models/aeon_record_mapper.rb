@@ -35,7 +35,7 @@ class AeonRecordMapper
     end
 
     def repo_settings
-        AppConfig[:aeon_fulfillment][self.repo_code]
+        AppConfig[:aeon_fulfillment][self.repo_code] || {}
     end
 
     def user_defined_fields
@@ -92,7 +92,7 @@ class AeonRecordMapper
             else
                 return "Not requestable"
             end
-        elsif !self.record_has_top_containers?
+        elsif !self.record_has_top_containers? && (self.repo_settings[:requests_permitted_for_containers_only] == true || self.repo_settings[:top_container_mode] == true)
             if (message = self.repo_settings[:no_containers_message])
                 return message
             else
@@ -117,14 +117,16 @@ class AeonRecordMapper
     def hide_button?
         # returning false to maintain the original behavior
         return false unless self.repo_settings
-
+        
         if self.repo_settings[:hide_request_button]
             return true
         elsif (self.repo_settings[:hide_button_for_accessions] == true && record.is_a?(Accession))
             return true
         elsif self.requestable_based_on_archival_record_level? == false
             return true
-        elsif self.record_has_top_containers? == false
+        elsif self.repo_settings[:top_container_mode] == true && self.record_has_top_containers? == false
+            return true
+        elsif self.repo_settings[:requests_permitted_for_containers_only] == true && self.record_has_top_containers? == false
             return true
         elsif self.record_has_restrictions? == true
             return true
@@ -214,6 +216,10 @@ class AeonRecordMapper
         true
     end
 
+    def log_record?
+        return self.repo_settings[:log_records] == true
+    end
+
 
     # Pulls data from the contained record
     def map
@@ -267,8 +273,9 @@ class AeonRecordMapper
     # Pulls data from self.record
     def record_fields
         mappings = {}
-
-        Rails.logger.debug("Aeon Fulfillment Plugin") { "Mapping Record: #{self.record}" }
+        if log_record?
+            Rails.logger.debug("Aeon Fulfillment Plugin") { "Mapping Record: #{self.record}" }
+        end
 
         mappings['identifier'] = self.record.identifier || self.record['identifier']
         mappings['publish'] = self.record['publish']
@@ -505,9 +512,11 @@ class AeonRecordMapper
     def find_container_instances (record_json)
         
         current_uri = record_json['uri']
-
+        
         Rails.logger.info("Aeon Fulfillment Plugin") { "Checking \"#{current_uri}\" for Top Container instances..." }
-        Rails.logger.debug("Aeon Fulfillment Plugin") { "#{record_json.to_json}" }
+        if log_record?
+            Rails.logger.debug("Aeon Fulfillment Plugin") { "#{record_json.to_json}" }
+        end
 
         instances = record_json['instances']
             .reject { |instance| instance['digital_object'] }

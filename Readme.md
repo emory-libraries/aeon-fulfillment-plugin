@@ -1,8 +1,8 @@
 # ArchivesSpace Request Fulfillment via Aeon
 
-**Version:** 20230302
+**Version:** 20250617
 
-**Last Updated:** March 2, 2023
+**Last Updated:** June 17, 2025
 
 
 ## Table of Contents
@@ -68,6 +68,11 @@ ArchivesSpace may cause changes in the functionality of this plugin.
 
 
 ## Changelog
+
+- **20241210**
+    - Added example to demonstrate configuration of
+    :disallowed_record_level_message, :no_containers_message,
+    and :restrictions_message settings.
 
 - **20170809** 
     - Initial release of this ArchivesSpace plugin
@@ -151,6 +156,14 @@ ArchivesSpace may cause changes in the functionality of this plugin.
 - **20230302**
     - Added `:top_container_mode` setting to support new Aeon Archival Request form.
     - Added some additional mapping options.
+- **20230725**
+    - Added `:log_records` setting to reduce amount of data logged unless logging of full records is explicitly enabled.
+- **20241126**
+    - Fixed a bug that caused a login loop when `:top_container_mode` is false. 
+    Rather than using action=11&type=200 in this case, the AeonForm is specified as 
+    ExternalRequest with a hidden input instead.
+- **20250617**
+    - Fixed a bug that prevented the plugin from correctly handling the `:requests_permitted_for_containers_only` setting when `:top_container_mode` is false.
 
 ## Requirements
 
@@ -288,6 +301,11 @@ of the accessrestrict note. The value of this config item should be an array of 
 
 By default, no restriction types are hidden.
 
+#### `:log_records`
+
+This setting will log the full content of ArchivesSpace records when set to true.
+This can be useful for debugging mappings and plugin issues, but should not normally be enabled.
+
 #### `:requestable_archival_record_levels`
 
 This setting allows sites to restrict the types of Resources and Archival
@@ -373,6 +391,19 @@ This is the message that will be displayed instead of the Aeon Request button if
 
 This is the message that will be displayed instead of the Aeon Request button if the current record cannot be requested because it has active restrictions matching the values in the :hide_button_for_access_restriction_types setting. If no value is provided, the default value will be "Access Restricted". The message should be kept short (30 characters or less) for best appearance.
 
+**Example 1** Specifies messages for :disallowed_records_level_message, :no_containers_message, and :restrictions_message.
+
+```ruby
+AppConfig[:aeon_fulfillment] = {
+    "repo code" => {
+        # ...
+        :top_container_mode => true,
+        :disallowed_record_level_message => "Not requestable",
+        :no_containers_message => "No requestable containers",
+        :restrictions_message => "Access restricted"
+    }
+}
+```
 
 #### `:user_defined_fields`
 
@@ -545,8 +576,6 @@ records.
 - `level`
 - `title`
 - `uri`
-- `collection_id`
-- `collection_title`
 - `repo_code`
 - `repo_name`
 - `language`
@@ -557,12 +586,6 @@ records.
 - `display_string`
 - `creators` 
     - semi-colon (`;`) separated string list
-- `accessrestrict`
-    - semi-colon (`;`) separated string list
-    - contains the content from `accessrestrict` subnotes
-- `physical_location_note`
-    - semi-colon (`;`) separated string list 
-    - contains the content from `physloc` notes
 - `{date_label}_date`
     - semi-colon (`;`) separated string list 
     - contains the content from the `expression`s of the record's related 
@@ -578,9 +601,6 @@ records.
 - `date_expression`
   - semi-colon (`;`) separated string list 
   -  contains the combined final_expressions of the single and inclusive dates associated with the record.
-- `userestrict`
-  - semi-colon (`;`) separated string list 
-  - contains the combined contents of all published userestrict notes associated with the record.
 - `rights_type`
   - semi-colon (`;`) separated string list 
   - contains the combined rights_type values of all rights statements associated with the record.
@@ -629,8 +649,19 @@ and the values of each may differ from instance to instance.
 In addition to the fields specified above, the following additional fields are
 specific to requests made for Archival Object records.
 
-- `repository_processing_note`
+- `accessrestrict`
+    - semi-colon (`;`) separated string list
+    - contains the content from `accessrestrict` subnotes
+- `collection_id`
+- `collection_title`
 - `component_id`
+- `physical_location_note`
+    - semi-colon (`;`) separated string list 
+    - contains the content from `physloc` notes
+- `repository_processing_note`
+- `userestrict`
+  - semi-colon (`;`) separated string list 
+  - contains the combined contents of all published userestrict notes associated with the record.
 
 ### Accession Fields
 
